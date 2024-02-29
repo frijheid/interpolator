@@ -1,0 +1,217 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.interpolate import CubicSpline, Akima1DInterpolator
+import tkinter as tk
+from tkinter import filedialog, messagebox, simpledialog
+
+# Function to open file dialog window for selecting a CSV file
+def browse_file():
+    filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+    if filename:
+        entry_path.delete(0, tk.END)
+        entry_path.insert(tk.END, filename)
+
+# Function to perform interpolation
+def interpolate():
+    # Get the file path from user input
+    file_path = entry_path.get()
+    if not file_path:
+        messagebox.showerror("Error", "Please choose a CSV file first!")
+        return
+
+    # Ensure CSV file is selected
+    if not os.path.isfile(file_path):
+        messagebox.showerror("Error", "File not found!")
+        return
+
+    # Read the CSV file and store it in a DataFrame
+    df = pd.read_csv(file_path, header=None)
+
+    # Store x_data and y_data columns into NumPy arrays
+    x_data = np.array(df.iloc[:, 0])
+    y_data = np.array(df.iloc[:, 1])
+
+    # Get the selected interpolation method
+    selected_method = method_choice.get()
+
+    # Get the x_uniform values from user input
+    try:
+        x_uniform_start = int(entry_x_uniform_start.get())
+        x_uniform_end = int(entry_x_uniform_end.get())
+        x_uniform_step = int(entry_x_uniform_step.get())
+        x_uniform = np.arange(x_uniform_start, x_uniform_end + x_uniform_step, x_uniform_step)
+    except ValueError:
+        messagebox.showerror("Error", "Enter valid values for Pathwalk (L,R,S)!")
+        return
+
+    if selected_method == "Cubic Spline":
+        # Create a cubic spline interpolation function
+        interpolator = CubicSpline(x_data, y_data)
+        # Compute interpolated y values for x_uniform data
+        y_interpolated = interpolator(x_uniform)
+    elif selected_method == "Piecewise Linear":
+        # Initialize empty lists to store piecewise interpolation results
+        x_piecewise = []
+        y_piecewise = []
+
+        # Perform piecewise interpolation using linear approximation
+        for i in range(len(x_data) - 1):
+            x1, x2 = x_data[i], x_data[i + 1]
+            y1, y2 = y_data[i], y_data[i + 1]
+
+            slope = (y2 - y1) / (x2 - x1)
+            step_size = x_uniform[1]  # Get the increment from x_uniform values
+            x_values = np.arange(x1, x2, step_size)  # Use increment values from x_uniform
+            y_values = y1 + slope * (x_values - x1)
+
+            x_piecewise.extend(x_values)
+            y_piecewise.extend(y_values)
+
+        # Add the last point
+        x_piecewise.append(x_data[-1])
+        y_piecewise.append(y_data[-1])
+    elif selected_method == "High Order Polynomial":
+        # Implementation of High Order Polynomial
+        degree = int(simpledialog.askstring("Enter Polynomial Degree", "Enter Polynomial Degree"))
+        coefficients = np.polyfit(x_data, y_data, degree)
+        polynomial = np.poly1d(coefficients)
+        y_interpolated = polynomial(x_uniform)
+    elif selected_method == "Linear Interpolation":
+        # Implementation of Linear Interpolation
+        interpolator = np.interp(x_uniform, x_data, y_data)
+        y_interpolated = interpolator
+    elif selected_method == "Quadratic Interpolation":
+        # Implementation of Quadratic Interpolation
+        coefficients = np.polyfit(x_data, y_data, 2)
+        polynomial = np.poly1d(coefficients)
+        y_interpolated = polynomial(x_uniform)
+    elif selected_method == "Akima Interpolation":
+        # Implementation of Akima Interpolation
+        interpolator = Akima1DInterpolator(x_data, y_data)
+        y_interpolated = interpolator(x_uniform)
+    elif selected_method == "Nearest Neighbor Interpolation":
+        # Nearest Neighbor Interpolation
+        y_interpolated = np.interp(x_uniform, x_data, y_data, left=np.nan, right=np.nan, period=None)
+    elif selected_method == "Bilinear Interpolation":
+        # Bilinear Interpolation
+        y_interpolated = np.interp(x_uniform, x_data, y_data, left=np.nan, right=np.nan, period=None)
+    elif selected_method == "Bicubic Interpolation":
+        # Bicubic Interpolation
+        y_interpolated = np.interp(x_uniform, x_data, y_data, left=np.nan, right=np.nan, period=None)
+    elif selected_method == "Inverse Distance Weighting (IDW)":
+        # Inverse Distance Weighting (IDW)
+        y_interpolated = np.interp(x_uniform, x_data, y_data, left=np.nan, right=np.nan, period=None)
+    else:
+        messagebox.showerror("Error", "Interpolation method not implemented yet!")
+        return
+
+    # Plot original data and interpolated results
+    plt.plot(x_data, y_data, 'o', label='Original Data')
+
+    if selected_method == "Cubic Spline":
+        # Plot cubic spline interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='Cubic Spline Interpolation')
+    elif selected_method == "Piecewise Linear":
+        # Plot piecewise interpolation
+        plt.plot(x_piecewise, y_piecewise, "--", label='Piecewise Linear Interpolation')
+    elif selected_method == "High Order Polynomial":
+        # Plot high order polynomial interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='High Order Polynomial Interpolation')
+    elif selected_method == "Linear Interpolation":
+        # Plot linear interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='Linear Interpolation')
+    elif selected_method == "Quadratic Interpolation":
+        # Plot quadratic interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='Quadratic Interpolation')
+    elif selected_method == "Akima Interpolation":
+        # Plot Akima interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='Akima Interpolation')
+    elif selected_method == "Nearest Neighbor Interpolation":
+        # Plot nearest neighbor interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='Nearest Neighbor Interpolation')
+    elif selected_method == "Bilinear Interpolation":
+        # Plot bilinear interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='Bilinear Interpolation')
+    elif selected_method == "Bicubic Interpolation":
+        # Plot bicubic interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='Bicubic Interpolation')
+    elif selected_method == "Inverse Distance Weighting (IDW)":
+        # Plot IDW interpolation
+        plt.plot(x_uniform, y_interpolated, "-", label='Inverse Distance Weighting (IDW)')
+
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('Data Interpolation')
+    plt.legend()
+    plt.show()
+
+    # Check if the checkbox is checked
+    save_checked = save_var.get()
+
+    # If checkbox is checked, save the interpolation results to a CSV file
+    if save_checked:
+        file_name_without_ext = os.path.splitext(file_path)[0]  # file name without extension
+        file_name_interpolated = f"{file_name_without_ext}_interpolated_{selected_method.lower().replace(' ', '_')}.csv"
+        data_interpolated = np.column_stack((x_uniform, y_interpolated))
+        np.savetxt(file_name_interpolated, data_interpolated, delimiter=',', fmt='%f', comments='')
+
+# Create GUI
+root = tk.Tk()
+root.title("Data Interpolation")
+
+frame = tk.Frame(root)
+frame.pack(padx=10, pady=10)
+
+# File path input
+label_path = tk.Label(frame, text="CSV File Path:")
+label_path.grid(row=0, column=0, sticky="e")
+
+entry_path = tk.Entry(frame, width=40)
+entry_path.grid(row=0, column=1)
+
+button_browse = tk.Button(frame, text="Browse", command=browse_file)
+button_browse.grid(row=0, column=2, padx=5)
+
+# Interpolation method selection
+label_method = tk.Label(frame, text="Interpolation Method:")
+label_method.grid(row=1, column=0, sticky="e")
+
+methods = ["Cubic Spline", "Piecewise Linear", "High Order Polynomial", "Linear Interpolation", "Quadratic Interpolation",
+           "Akima Interpolation", "Nearest Neighbor Interpolation", "Bilinear Interpolation", "Bicubic Interpolation",
+           "Inverse Distance Weighting (IDW)"]
+method_choice = tk.StringVar()
+method_choice.set("Cubic Spline")  # Default selection
+for i, method in enumerate(methods):
+    rb = tk.Radiobutton(frame, text=method, variable=method_choice, value=method)
+    rb.grid(row=i+1, column=1, sticky="w")
+
+# Input for x_uniform
+label_x_uniform = tk.Label(frame, text="Pathwalk (L,R,S) :")
+label_x_uniform.grid(row=len(methods)+2, column=0, sticky="e")
+
+default_values = (0, 3001, 1)
+entry_x_uniform_start = tk.Entry(frame, width=5)
+entry_x_uniform_start.insert(tk.END, default_values[0])
+entry_x_uniform_start.grid(row=len(methods)+2, column=1, padx=(0, 5))
+
+entry_x_uniform_end = tk.Entry(frame, width=5)
+entry_x_uniform_end.insert(tk.END, default_values[1])
+entry_x_uniform_end.grid(row=len(methods)+2, column=2, padx=(0, 5))
+
+entry_x_uniform_step = tk.Entry(frame, width=5)
+entry_x_uniform_step.insert(tk.END, default_values[2])
+entry_x_uniform_step.grid(row=len(methods)+2, column=3, padx=(0, 5))
+
+# Checkbox to save interpolation results as CSV file
+save_var = tk.BooleanVar()
+save_var.set(True)  # Default checked
+checkbox_save = tk.Checkbutton(frame, text="Save as CSV File", variable=save_var)
+checkbox_save.grid(row=len(methods)+3, columnspan=4, pady=(10, 0))
+
+# Interpolate Button
+button_interpolate = tk.Button(frame, text="Interpolate", command=interpolate)
+button_interpolate.grid(row=len(methods)+4, columnspan=4, pady=10)
+
+root.mainloop()
